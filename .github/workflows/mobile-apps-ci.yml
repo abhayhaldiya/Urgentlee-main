@@ -1,0 +1,142 @@
+name: Mobile Apps CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/user-app/**'
+      - 'apps/tailor-app/**'
+      - 'packages/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/user-app/**'
+      - 'apps/tailor-app/**'
+      - 'packages/**'
+
+jobs:
+  test-user-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '8.15.0'
+
+      - name: Setup Expo CLI
+        run: npm install -g @expo/cli
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run User App tests
+        run: cd apps/user-app && pnpm test --run
+
+      - name: Run User App linting
+        run: cd apps/user-app && pnpm lint
+
+      - name: Run User App type checking
+        run: cd apps/user-app && pnpm type-check
+
+      - name: Build User App for web (validation)
+        run: cd apps/user-app && expo export --platform web
+
+  test-tailor-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '8.15.0'
+
+      - name: Setup Expo CLI
+        run: npm install -g @expo/cli
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Tailor App tests
+        run: cd apps/tailor-app && pnpm test --run
+
+      - name: Run Tailor App linting
+        run: cd apps/tailor-app && pnpm lint
+
+      - name: Run Tailor App type checking
+        run: cd apps/tailor-app && pnpm type-check
+
+      - name: Build Tailor App for web (validation)
+        run: cd apps/tailor-app && expo export --platform web
+
+  # EAS Build for production releases (commented out for now)
+  # build-mobile-apps:
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   needs: [test-user-app, test-tailor-app]
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '18'
+  #
+  #     - name: Setup Expo and EAS
+  #       uses: expo/expo-github-action@v8
+  #       with:
+  #         expo-version: latest
+  #         eas-version: latest
+  #         token: ${{ secrets.EXPO_TOKEN }}
+  #
+  #     - name: Install dependencies
+  #       run: pnpm install --frozen-lockfile
+  #
+  #     - name: Build User App
+  #       run: cd apps/user-app && eas build --platform all --non-interactive
+  #
+  #     - name: Build Tailor App
+  #       run: cd apps/tailor-app && eas build --platform all --non-interactive
